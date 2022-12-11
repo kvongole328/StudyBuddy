@@ -2,7 +2,7 @@ import openai
 import os 
 def generate_response(input_string):
     # Set the API key
-    openai.api_key = os.environ["OPEN_AI"]
+    openai.api_key = os.environ["OPEN_AI_KEY"]
 
 
     # Set the model to use
