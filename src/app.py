@@ -13,7 +13,6 @@ app.config['BASIC_AUTH_USERNAME'] = os.environ['BASIC_AUTH_USERNAME']
 app.config['BASIC_AUTH_PASSWORD'] = os.environ['BASIC_AUTH_PASSWORD']
 
 
-print(os.environ['DATABASE_NAME'])
 conn = psycopg2.connect(database = os.environ['DATABASE_NAME'], user = os.environ['DATABASE_USER'], password = str(os.environ["DATABASE_PASSWORD"]),host = "oregon-postgres.render.com" ,port = '5432', sslmode='require')
 
 curr = conn.cursor() 
@@ -51,6 +50,9 @@ def validate_twilio_request(f):
 @app.route("/sms", methods=['GET', 'POST'])
 @basic_auth.required 
 def incoming_sms():
+    conn = psycopg2.connect(database = os.environ['DATABASE_NAME'], user = os.environ['DATABASE_USER'], password = str(os.environ["DATABASE_PASSWORD"]),host = "oregon-postgres.render.com" ,port = '5432', sslmode='require')
+
+    curr = conn.cursor() 
 
     # Getincoming message info 
     incoming_message_sid = request.values.get('MessageSid')
