@@ -4,6 +4,7 @@ import gpt_handler
 from flask_basicauth import BasicAuth
 from twilio.request_validator import RequestValidator
 from functools import wraps
+from twilio.rest import Client 
 import os, psycopg2, pypika
 
 
@@ -89,6 +90,41 @@ def incoming_sms():
     conn.commit()
 
     return str(resp)
+
+
+'''Send verification to phone number''' 
+@app.route("/send-code", methods=['POST'])
+@basic_auth.required
+def send_code():
+    phone_number = str(request.values.get('phone_number'))
+    account_sid = os.environ['TWILIO_ACCOUNT_SID']
+    auth_token = os.environ['TWILIO_AUTH_TOKEN']
+    twilio_service_id = os.environ['TWILIO_SERVICE_ID']
+
+    client = Client(account_sid, auth_token)
+    verification = client.verify \
+                     .v2 \
+                     .services(twilio_service_id) \
+                     .verifications \
+                     .create(to = "+"+phone_number, channel='sms')
+    return (verification.status)
+
+@app.route("/verify-code", methods=['POST'])
+@basic_auth.required
+def verify_code():
+    received_code = request.values.get('verification_code')
+    phone_number = str(request.values.get('phone_number'))
+    account_sid = os.environ['TWILIO_ACCOUNT_SID']
+    auth_token = os.environ['TWILIO_AUTH_TOKEN']
+    twilio_service_id = os.environ['TWILIO_SERVICE_ID']
+    client = Client(account_sid, auth_token)
+    verification_check = client.verify \
+                     .v2 \
+                     .services(twilio_service_id) \
+                     .verification_checks \
+                     .create(to="+"+phone_number, code=received_code)
+    return (verification_check.status)
+
 
 
 ''' Test end point set up to verify that basic auth is working ''' 
