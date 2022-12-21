@@ -1,4 +1,4 @@
-from flask import Flask, request, redirect,abort
+from flask import Flask, request, redirect,abort, make_response, jsonify
 from twilio.twiml.messaging_response import MessagingResponse
 import gpt_handler
 from flask_basicauth import BasicAuth
@@ -99,6 +99,9 @@ def incoming_sms():
 @cross_origin()
 @basic_auth.required
 def send_code():
+    #CORS Preflight
+    if request.method == "OPTIONS": 
+        return _build_cors_preflight_response() 
     phone_number = str(request.values.get('phone_number'))
     account_sid = os.environ['TWILIO_ACCOUNT_SID']
     auth_token = os.environ['TWILIO_AUTH_TOKEN']
@@ -110,12 +113,15 @@ def send_code():
                      .services(twilio_service_id) \
                      .verifications \
                      .create(to = "+"+"1"+phone_number, channel='sms')
-    return (verification.status)
+    return verification.status 
 
 @app.route("/verify-code", methods=['POST'])
 @cross_origin()
 @basic_auth.required
 def verify_code():
+    #CORS Preflight
+    if request.method == "OPTIONS": 
+        return _build_cors_preflight_response() 
     received_code = request.values.get('verification_code')
     phone_number = str(request.values.get('phone_number'))
     account_sid = os.environ['TWILIO_ACCOUNT_SID']
@@ -127,7 +133,7 @@ def verify_code():
                      .services(twilio_service_id) \
                      .verification_checks \
                      .create(to="+"+"1"+ phone_number, code=received_code)
-    return (verification_check.status)
+    return verification_check.status
 
 
 
@@ -143,6 +149,16 @@ def test():
         print("received GET WEbhook" )
         return "GET Webhook Received"
 
+
+def _build_cors_preflight_response(): 
+    response = make_response() 
+    response.headers.add("Access-Control-Allow-Origin", "*")
+    response.headers.add("Access-Control-Allow-Headers", "*")
+    response.headers.add("Access-Control-Allow-Methods", "*")
+    return response
+def _corsify_actual_response(response): 
+    response.headers.add("Access-Control-Allow-Origin","*")
+    return response
 
 
 if __name__ == "__main__":
