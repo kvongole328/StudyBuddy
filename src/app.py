@@ -102,6 +102,7 @@ def send_code():
     #CORS Preflight
     if request.method == "OPTIONS": 
         return _build_cors_preflight_response() 
+    print("request is:",request.values)
     phone_number = str(request.values.get('phone_number'))
     print("phone number is: ", phone_number)
     account_sid = os.environ['TWILIO_ACCOUNT_SID']
