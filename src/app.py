@@ -6,9 +6,10 @@ from twilio.request_validator import RequestValidator
 from functools import wraps
 from twilio.rest import Client 
 import os, psycopg2, pypika
-
+from flask_cors import CORS 
 
 app = Flask(__name__)
+CORS(app)
 
 app.config['BASIC_AUTH_USERNAME'] = os.environ['BASIC_AUTH_USERNAME']
 app.config['BASIC_AUTH_PASSWORD'] = os.environ['BASIC_AUTH_PASSWORD']
@@ -122,7 +123,7 @@ def verify_code():
                      .v2 \
                      .services(twilio_service_id) \
                      .verification_checks \
-                     .create(to="+"+phone_number, code=received_code)
+                     .create(to="+"+"1"+phone_number, code=received_code)
     return (verification_check.status)
 
 
