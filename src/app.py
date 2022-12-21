@@ -113,7 +113,10 @@ def send_code():
                      .services(twilio_service_id) \
                      .verifications \
                      .create(to = "+"+"1"+phone_number, channel='sms')
-    return verification.status 
+    response = jsonify({"status":verification.status})
+    response.headers.add("Access-Control-Allow-Origin","*")
+    return response
+
 
 @app.route("/verify-code", methods=['POST'])
 @cross_origin()
@@ -128,6 +131,7 @@ def verify_code():
     auth_token = os.environ['TWILIO_AUTH_TOKEN']
     twilio_service_id = os.environ['TWILIO_SERVICE_ID']
     client = Client(account_sid, auth_token)
+    print("phone number" , phone_number)
     verification_check = client.verify \
                      .v2 \
                      .services(twilio_service_id) \
