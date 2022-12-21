@@ -103,7 +103,7 @@ def send_code():
     if request.method == "OPTIONS": 
         return _build_cors_preflight_response() 
     phone_number = str(request.values.get('phone_number'))
-    console.log(phone_number)
+    print(phone_number)
     account_sid = os.environ['TWILIO_ACCOUNT_SID']
     auth_token = os.environ['TWILIO_AUTH_TOKEN']
     twilio_service_id = os.environ['TWILIO_SERVICE_ID']
