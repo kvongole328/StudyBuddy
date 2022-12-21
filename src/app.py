@@ -9,8 +9,8 @@ import os, psycopg2, pypika
 from flask_cors import CORS,cross_origin
 
 app = Flask(__name__)
-#CORS(app)
-#app.config['CORS_HEADERS'] = 'Content-Type'
+CORS(app)
+app.config['CORS_HEADERS'] = 'Content-Type'
 
 app.config['BASIC_AUTH_USERNAME'] = os.environ['BASIC_AUTH_USERNAME']
 app.config['BASIC_AUTH_PASSWORD'] = os.environ['BASIC_AUTH_PASSWORD']
@@ -96,6 +96,7 @@ def incoming_sms():
 
 '''Send verification to phone number''' 
 @app.route("/send-code", methods=['POST'])
+@cross_origin()
 @basic_auth.required
 def send_code():
     #CORS Preflight
@@ -120,6 +121,7 @@ def send_code():
 
 
 @app.route("/verify-code", methods=['POST'])
+@cross_origin()
 @basic_auth.required
 def verify_code():
     #CORS Preflight
