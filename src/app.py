@@ -107,7 +107,7 @@ def send_code():
                      .v2 \
                      .services(twilio_service_id) \
                      .verifications \
-                     .create(to = "+"+phone_number, channel='sms')
+                     .create(to = "+"+"1"+phone_number, channel='sms')
     return (verification.status)
 
 @app.route("/verify-code", methods=['POST'])
@@ -123,7 +123,7 @@ def verify_code():
                      .v2 \
                      .services(twilio_service_id) \
                      .verification_checks \
-                     .create(to="+"+"1"+phone_number, code=received_code)
+                     .create(to="+"+"1"+ phone_number, code=received_code)
     return (verification_check.status)
 
 
