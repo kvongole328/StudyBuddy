@@ -96,7 +96,6 @@ def incoming_sms():
 
 '''Send verification to phone number''' 
 @app.route("/send-code", methods=['POST'])
-@cross_origin()
 @basic_auth.required
 def send_code():
     #CORS Preflight
@@ -121,7 +120,6 @@ def send_code():
 
 
 @app.route("/verify-code", methods=['POST'])
-@cross_origin()
 @basic_auth.required
 def verify_code():
     #CORS Preflight
@@ -139,6 +137,9 @@ def verify_code():
                      .services(twilio_service_id) \
                      .verification_checks \
                      .create(to="+"+"1"+ phone_number, code=received_code)
+                    
+    response = jsonify({"status":verification_check.status})
+    response.headers.add("Access-Control-Allow-Origin","*")
     return verification_check.status
 
 
