@@ -7,6 +7,7 @@ from functools import wraps
 from twilio.rest import Client 
 import os, psycopg2, pypika
 from flask_cors import CORS,cross_origin
+from communication import welcome_message
 
 app = Flask(__name__)
 CORS(app)
@@ -140,6 +141,8 @@ def verify_code():
                     
     response = jsonify({"status":verification_check.status})
     response.headers.add("Access-Control-Allow-Origin","*")
+    if (verification_check.status  == 'approved'):
+        welcome_message(phone_number)
     return verification_check.status
 
 
