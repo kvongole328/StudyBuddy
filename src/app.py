@@ -7,7 +7,11 @@ from functools import wraps
 from twilio.rest import Client 
 import os, psycopg2, pypika
 from flask_cors import CORS,cross_origin
-from communication import welcome_message
+import communication
+import utils 
+from sqlalchemy import exc
+
+import models 
 
 app = Flask(__name__)
 CORS(app)
@@ -17,9 +21,6 @@ app.config['BASIC_AUTH_USERNAME'] = os.environ['BASIC_AUTH_USERNAME']
 app.config['BASIC_AUTH_PASSWORD'] = os.environ['BASIC_AUTH_PASSWORD']
 
 
-conn = psycopg2.connect(database = os.environ['DATABASE_NAME'], user = os.environ['DATABASE_USER'], password = str(os.environ["DATABASE_PASSWORD"]),host = "oregon-postgres.render.com" ,port = '5432', sslmode='require')
-
-curr = conn.cursor() 
 
 basic_auth = BasicAuth(app)
 
@@ -54,43 +55,47 @@ def validate_twilio_request(f):
 @app.route("/sms", methods=['GET', 'POST'])
 @basic_auth.required 
 def incoming_sms():
-    conn = psycopg2.connect(database = os.environ['DATABASE_NAME'], user = os.environ['DATABASE_USER'], password = str(os.environ["DATABASE_PASSWORD"]),host = "oregon-postgres.render.com" ,port = '5432', sslmode='require')
-
-    curr = conn.cursor() 
 
     # Getincoming message info 
     incoming_message_sid = request.values.get('MessageSid')
     from_number = request.values.get('From')
     to_number = request.values.get('To')
     incoming_body = request.values.get('Body', None)
-
-    # Build Query
-    messages = pypika.Table('messages')
-    incoming_query = str(pypika.Query.into(messages).insert(incoming_message_sid, from_number, to_number,incoming_body)) 
     
+    #SQL Alchemy Commit to DB 
+    message = models.MessagesModel(message_sid = str(incoming_message_sid), from_number = str(from_number), to_number = str(to_number), body = str(incoming_body))
+
+    session_maker = utils.Session() 
+    with session_maker() as session:
+        try:  
+            session.add(message)
+            session.commit()
+        except exc.SQLAlchemyError as e: 
+            print(type(e)) 
 
 
-    ##insert into DB 
-    curr = conn.cursor()
-    curr.execute(incoming_query);
-    conn.commit()
     
     #Get GPT Response
     to_reply = gpt_handler.generate_response(incoming_body) 
     # Start our TwiML response
     resp = MessagingResponse()
-
     resp.message(to_reply)
 
     #Update DB 
-    outgoing_message_sid = incoming_message_sid  
+    outgoing_message_sid = incoming_message_sid 
     to_number_outgoing = request.values.get('From')
     from_number_outgoing = request.values.get('To')
     outgoing_body = to_reply 
 
-    outgoing_query = str(pypika.Query.into(messages).insert(outgoing_message_sid, from_number_outgoing, to_number_outgoing,outgoing_body))
-    curr.execute(outgoing_query);
-    conn.commit()
+    message = models.MessagesModel(message_sid = str(outgoing_message_sid+"og"), from_number = str(from_number_outgoing), to_number = str(to_number_outgoing), body = str(outgoing_body))
+
+    session_maker = utils.Session() 
+    with session_maker() as session:
+        try:  
+            session.add(message)
+            session.commit()
+        except exc.SQLAlchemyError as e: 
+            print(type(e)) 
 
     return str(resp)
 
@@ -142,14 +147,14 @@ def verify_code():
     response = jsonify({"status":verification_check.status})
     response.headers.add("Access-Control-Allow-Origin","*")
     if (verification_check.status  == 'approved'):
-        welcome_message(phone_number)
+        communication.welcome_message(phone_number)
     return verification_check.status
 
 
 
 ''' Test end point set up to verify that basic auth is working ''' 
 @app.route("/test", methods=['GET', 'POST'])
-@validate_twilio_request
+#@validate_twilio_request
 @basic_auth.required 
 def test():
     if request.method == 'POST':
@@ -158,6 +163,8 @@ def test():
     if request.method == 'GET': 
         print("received GET WEbhook" )
         return "GET Webhook Received"
+    
+   
 
 
 def _build_cors_preflight_response(): 
