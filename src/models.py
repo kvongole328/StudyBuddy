@@ -23,6 +23,8 @@ class MessagesModel(Base):
     from_number = Column(String) 
     to_number = Column(String) 
     body = Column(String(1600))
+    time_stamp = Column(DateTime,default=datetime.utcnow)
+
 
 
 

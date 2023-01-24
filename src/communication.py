@@ -7,8 +7,9 @@ from functools import wraps
 from twilio.rest import Client 
 import os, psycopg2, pypika
 from flask_cors import CORS,cross_origin
-import utils 
+from utils import * 
 import models 
+from datetime import datetime 
 import random
 from sqlalchemy import exc
 
@@ -42,25 +43,14 @@ def welcome_message(customer_number):
                  )
 
     # Get message info 
-    message_sid = message.sid
-    from_number = number_to_use
-    to_number = customer_number
-    incoming_body = message.body
+    message_sid = str(message.sid)  
+    from_number = str(number_to_use)
+    to_number = str(customer_number)
+    incoming_body = str(message.body)
+    current_time = datetime.now()
     print("ID:",message_sid)
     
+    db_handler.add_message(message_sid,from_number,to_number,incoming_body,current_time)
     # Build Query and add to DB 
-    message = models.MessagesModel(message_sid = str(message_sid), from_number = str(number_to_use), to_number = "+1"+str(customer_number), body = str(incoming_body))
-    session_maker = utils.Session() 
-    with session_maker() as session: 
-        try: 
-            session.add(message)
-            session.commit() 
-        except exc.SQLAlchemyError as e:
-            print(type(e))
-     
-            
-    messages = pypika.Table('messages')
-    incoming_query = str(pypika.Query.into(messages).insert(message_sid, from_number, to_number,incoming_body)) 
-    
 
 

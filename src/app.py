@@ -8,15 +8,15 @@ from twilio.rest import Client
 import os, psycopg2, pypika
 from flask_cors import CORS,cross_origin
 import communication
-import utils 
+from utils import * 
 from sqlalchemy import exc
-
 import models 
+import auth 
+from datetime import datetime
 
 app = Flask(__name__)
 CORS(app)
 app.config['CORS_HEADERS'] = 'Content-Type'
-
 app.config['BASIC_AUTH_USERNAME'] = os.environ['BASIC_AUTH_USERNAME']
 app.config['BASIC_AUTH_PASSWORD'] = os.environ['BASIC_AUTH_PASSWORD']
 
@@ -57,24 +57,15 @@ def validate_twilio_request(f):
 def incoming_sms():
 
     # Getincoming message info 
-    incoming_message_sid = request.values.get('MessageSid')
-    from_number = request.values.get('From')
-    to_number = request.values.get('To')
-    incoming_body = request.values.get('Body', None)
+    incoming_message_sid = str(request.values.get('MessageSid'))
+    from_number = str(request.values.get('From'))
+    to_number = str(request.values.get('To'))
+    incoming_body = str(request.values.get('Body', None))
+    time_stamp = datetime.now()
     
     #SQL Alchemy Commit to DB 
-    message = models.MessagesModel(message_sid = str(incoming_message_sid), from_number = str(from_number), to_number = str(to_number), body = str(incoming_body))
-
-    session_maker = utils.Session() 
-    with session_maker() as session:
-        try:  
-            session.add(message)
-            session.commit()
-        except exc.SQLAlchemyError as e: 
-            print(type(e)) 
-
-
-    
+    db_message = db_handler.add_message(incoming_message_sid,from_number,to_number,incoming_body,time_stamp)
+  
     #Get GPT Response
     to_reply = gpt_handler.generate_response(incoming_body) 
     # Start our TwiML response
@@ -86,19 +77,63 @@ def incoming_sms():
     to_number_outgoing = request.values.get('From')
     from_number_outgoing = request.values.get('To')
     outgoing_body = to_reply 
-
-    message = models.MessagesModel(message_sid = str(outgoing_message_sid+"og"), from_number = str(from_number_outgoing), to_number = str(to_number_outgoing), body = str(outgoing_body))
-
-    session_maker = utils.Session() 
-    with session_maker() as session:
-        try:  
-            session.add(message)
-            session.commit()
-        except exc.SQLAlchemyError as e: 
-            print(type(e)) 
+    outgoing_time_stamp = datetime.now()
+    
+    db_message = db_handler.add_message(outgoing_message_sid+"og",from_number_outgoing,to_number_outgoing,outgoing_body,outgoing_time_stamp)
 
     return str(resp)
 
+#### Stytch Create User path 
+@app.route("/create_user",methods=['POST'])
+@basic_auth.required 
+def create_user():
+    if request.method == "OPTIONS": 
+        return _build_cors_preflight_response()
+    print("request is:",request.values)
+    phone_number = str(request.values.get('phone_number'))
+    print("phone number is: ", phone_number)
+    create_user_response = auth.create_user("+"+"1"+phone_number)
+
+    ### Handle Error 
+    if create_user_response.status_code!= 200:
+        create_user_response = jsonify({"Status": create_user_response.status_code,"Error_Type": create_user_response.error_type, "Error_Message":create_user_response.error_message}) 
+        create_user_response.headers.add("Access-Control-Allow-Origin","*")
+        return create_user_response
+
+    response = jsonify({"Status": create_user_response.status_code, "User_ID": create_user_response.user_id, "Phone_ID": create_user_response.phone_id})
+    response.headers.add("Access-Control-Allow-Origin","*")
+
+    return response 
+
+
+#### New Stytch Verify Path 
+@app.route("/validate_user",methods=['POST'])
+@basic_auth.required 
+def validate_user():
+    if request.method == "OPTIONS": 
+        return _build_cors_preflight_response()
+    print("request is:",request.values)
+
+    verification_code = str(request.values.get('verification_code'))
+    phone_id= str(request.values.get('phone_id'))
+    user_id = str(request.values.get('user_id'))
+    phone_number = str(request.values.get('phone_number'))
+
+    ##Call Stytch helper to validate 
+    validation_response = auth.authenticate_user(verification_code,user_id,phone_id)
+    ### Handle Error State 
+    if validation_response.status_code!= 200:
+        error_response = jsonify({"Status": validation_response.status_code,"Error_Type": validation_response.error_type, "Error_Message":validation_response.error_message}) 
+        error_response.headers.add("Access-Control-Allow-Origin","*")
+        return error_response
+    
+    ####Handle Success
+    response = jsonify({"Status": validation_response.status_code, "User_ID": validation_response.user_id, "Phone_ID": validation_response.method_id})
+
+    ###Send GPT Welcome 
+    communication.welcome_message(phone_number)
+    response.headers.add("Access-Control-Allow-Origin","*")
+    return response 
 
 '''Send verification to phone number''' 
 @app.route("/send-code", methods=['POST'])
