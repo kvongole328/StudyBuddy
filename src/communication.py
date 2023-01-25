@@ -37,7 +37,7 @@ def welcome_message(customer_number):
     number_to_use = get_my_number() 
     message = client.messages \
                 .create(
-                     body="Hi - I'm your always on GPT-3 bot! You can ask me almost anything - even the airspeed velocity of an unladen swallow!",
+                     body="Welcome to the future from Text Me. Ask me anything you want - my jokes aren't terrible either.",
                      from_= number_to_use,
                      to=customer_number
                  )
